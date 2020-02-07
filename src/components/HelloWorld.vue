@@ -1,58 +1,265 @@
 <template>
   <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+    <header>
+      <section>
+        <form id="form" @submit.prevent>
+          <label for="title">ToDoList</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            placeholder="添加ToDo"
+            required="required"
+            autocomplete="off"
+            v-model="todoItem"
+            @keyup.enter="addItem"
+          />
+        </form>
+      </section>
+    </header>
+    <section>
+      <h2>
+        正在进行
+        <span id="todocount">{{todoCount}}</span>
+      </h2>
+      <ol id="todolist" class="demo-box">
+        <li v-for="item in todoList" :key="item.text">
+          <input type="checkbox" v-model="item.hasDone" @change="update(item.text,item.hasDone)" />
+          <p>{{item.text}}</p>
+          <a href="javascript:" @click.prevent="remove(item.text)">-</a>
+        </li>
+      </ol>
+      <h2>
+        已经完成
+        <span id="donecount">{{doneCount}}</span>
+      </h2>
+      <ul id="donelist">
+        <li v-for="item in doneList" :key="item.text">
+          <input type="checkbox" v-model="item.hasDone" @change="update(item.text,item.hasDone)" />
+          <p>{{item.text}}</p>
+          <a href="javascript:" @click.prevent="remove(item.text)">-</a>
+        </li>
+      </ul>
+    </section>
+    <footer>
+      Copyright © 2014 todolist.cn
+      <a href="javascript:" @click.prevent="clear">clear</a>
+    </footer>
   </div>
 </template>
 
 <script>
+import { ref, reactive, computed, onMounted } from "@vue/composition-api";
+import storage from "../until/storage.js";
 export default {
-  name: 'HelloWorld',
+  name: "HelloWorld",
   props: {
     msg: String
+  },
+  setup() {
+    const todoItem = ref("");
+    const todo = reactive({ list: [] });
+    const todoList = computed(() => todo.list.filter(item => !item.hasDone));
+    const todoCount = computed(
+      () => todo.list.filter(item => !item.hasDone).length
+    );
+    const doneList = computed(() => todo.list.filter(item => item.hasDone));
+    const doneCount = computed(
+      () => todo.list.filter(item => item.hasDone).length
+    );
+    const addItem = () => {
+      let text = todoItem.value;
+      for (let i = 0, len = todo.list.length; i < len; i++) {
+        if (todo.list[i].text == text) {
+          alert("重复的待办事项");
+          return;
+        }
+      }
+      todo.list.push({
+        text: text,
+        hasDone: false
+      });
+      storage.setItem("todolist", todo.list);
+      todoItem.value = "";
+    };
+    const update = (text, hasDone) => {
+      todo.list.forEach(item => {
+        if (item.text == text) {
+          item.hasDone = hasDone;
+        }
+      });
+      storage.setItem("todolist", todo.list);
+    };
+    const remove = text => {
+      todo.list = todo.list.filter(item => item.text !== text);
+      storage.setItem("todolist", todo.list);
+    };
+    const clear = () => {
+      todo.list = [];
+      storage.removeItem("todolist");
+    };
+    onMounted(() => {
+      let list = storage.getItem("todolist");
+      if (Array.isArray(list)) {
+        todo.list = list;
+      } else {
+        storage.setItem("todolist", todo.list);
+      }
+    });
+    return {
+      todoItem,
+      todo,
+      todoList,
+      todoCount,
+      doneList,
+      doneCount,
+      addItem,
+      update,
+      remove,
+      clear
+    };
   }
-}
+};
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
+body {
+  margin: 0;
   padding: 0;
+  font-size: 16px;
+  background: #cdcdcd;
+}
+header {
+  height: 50px;
+  background: #333;
+  background: rgba(47, 47, 47, 0.98);
+}
+section {
+  margin: 0 auto;
+}
+label {
+  float: left;
+  width: 100px;
+  line-height: 50px;
+  color: #ddd;
+  font-size: 24px;
+  cursor: pointer;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+header input {
+  float: right;
+  width: 60%;
+  height: 24px;
+  margin-top: 12px;
+  text-indent: 10px;
+  border-radius: 5px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 1px 6px rgba(0, 0, 0, 0.45) inset;
+  border: none;
+}
+input:focus {
+  outline-width: 0;
+}
+h2 {
+  position: relative;
+  text-align: left;
+}
+span {
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  display: inline-block;
+  padding: 0 5px;
+  height: 20px;
+  border-radius: 20px;
+  background: #e6e6fa;
+  line-height: 22px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+li input {
+  position: absolute;
+  top: 2px;
+  left: 10px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
+p {
+  margin: 0;
+  text-align: left;
+}
+li p input {
+  top: 3px;
+  left: 40px;
+  width: 70%;
+  height: 20px;
+  line-height: 14px;
+  text-indent: 5px;
+  font-size: 14px;
 }
 li {
-  display: inline-block;
-  margin: 0 10px;
+  height: 32px;
+  line-height: 32px;
+  background: #fff;
+  position: relative;
+  margin-bottom: 10px;
+  padding: 0 45px;
+  border-radius: 3px;
+  border-left: 5px solid #629a9c;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
 }
-a {
-  color: #42b983;
+ol li {
+  cursor: move;
+}
+ul li {
+  border-left: 5px solid #999;
+  opacity: 0.5;
+}
+li a {
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  display: inline-block;
+  width: 14px;
+  height: 12px;
+  border-radius: 14px;
+  border: 6px double #fff;
+  background: #ccc;
+  line-height: 14px;
+  text-align: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+}
+footer {
+  color: #666;
+  font-size: 14px;
+  text-align: center;
+}
+footer a {
+  color: #666;
+  text-decoration: none;
+  color: #999;
+}
+@media screen and (max-device-width: 620px) {
+  section {
+    width: 96%;
+    padding: 0 2%;
+  }
+}
+@media screen and (min-width: 620px) {
+  section {
+    width: 600px;
+    padding: 0 10px;
+  }
 }
 </style>
